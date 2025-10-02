@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق إدارة بيانات الطلاب</title>
+    <!-- Custom Tailwind Configuration for Sana'a University Colors -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sanaa-blue': '#003366', // Deep Navy Blue (Primary)
+                        'sanaa-gold': '#FFC72C', // Gold/Yellow (Accent)
+                        'sanaa-light': '#F0F4F8', // Light background for contrast
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            direction: rtl;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .card {
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .btn-primary {
+            /* Sana'a Blue Background */
+            background-color: #003366;
+            color: #fff;
+            border-radius: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-primary:hover {
+            /* Sana'a Gold Accent on Hover */
+            background-color: #FFC72C;
+            color: #003366; /* Deep Blue text for contrast on gold */
+        }
+        .btn-primary:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            color: #fefefe;
+        }
+        .form-input, .form-select {
+            border: 1px solid #d1d5da;
+            border-radius: 8px;
+            padding: 0.75rem;
+            width: 100%;
+        }
+        .table-header {
+            /* Deep Blue Header */
+            background-color: #003366;
+            color: white; 
+        }
+        .table-header th {
+            color: white; /* Ensure text is white */
+        }
+        .table-row {
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .table-row:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .action-button {
+            cursor: pointer;
+            transition: transform 0.2s;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+        }
+        .action-button:hover {
+            opacity: 0.9;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 90%;
+            width: 500px;
+            text-align: right;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            line-height: 1;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #fff;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 10;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: right;
+            left: 0;
+        }
+        .dropdown-content button {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            width: 100%;
+            text-align: right;
+            border-radius: 6px;
+        }
+        .dropdown-content button:hover {
+            background-color: #f1f1f1;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #fff;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <div id="loading-overlay">
+        <div class="flex flex-col items-center">
+            <!-- Spinner using Sana'a Blue -->
+            <div class="spinner !border-l-sanaa-blue !border-2 !border-gray-200" style="width: 48px; height: 48px;"></div>
+            <p class="text-white mt-4">جاري المعالجة...</p>
+        </div>
+    </div>
+
+    <div class="container mx-auto">
+        <!-- User ID Display (Light background with Blue Text) -->
+        <div class="card mb-4 bg-sanaa-light border border-sanaa-blue/10">
+            <p class="text-sm text-gray-600 text-center">
+                معرف المستخدم: <span id="userIdDisplay" class="font-bold text-sanaa-blue break-words">...</span>
+            </p>
+        </div>
+
+        <!-- Student Data Form -->
+        <div class="card mb-8">
+            <h1 class="text-3xl font-bold text-center text-sanaa-blue mb-6">نموذج إدخال بيانات الطلاب</h1>
+            <p class="text-center text-gray-600 mb-8">
+                أدخل البيانات الثابتة لجميع الطلاب أولاً، ثم أضف بيانات الطلاب بشكل منفرد.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Static Fields -->
+                <div>
+                    <label for="college" class="block text-sm font-medium text-gray-700 mb-1">الكلية</label>
+                    <select id="college" class="form-select" required>
+                        <option value="">-- اختر الكلية --</option>
+                        <option value="كلية الشريعة والقانون">كلية الشريعة والقانون</option>
+                        <option value="كلية التربية">كلية التربية</option>
+                        <option value="كلية الآداب والعلوم الإنسانية">كلية الآداب والعلوم الإنسانية</option>
+                        <option value="كلية العلوم">كلية العلوم</option>
+                        <option value="كلية التجارة والاقتصاد">كلية التجارة والاقتصاد</option>
+                        <option value="كلية الطب والعلوم الصحية">كلية الطب والعلوم الصحية</option>
+                        <option value="كلية الهندسة">كلية الهندسة</option>
+                        <option value="كلية الزراعة والأغذية والبيئة">كلية الزراعة والأغذية والبيئة</option>
+                        <option value="كلية الصيدلة">كلية الصيدلة</option>
+                        <option value="كلية الإعلام">كلية الإعلام</option>
+                        <option value="كلية اللغات">كلية اللغات</option>
+                        <option value="كلية طب الأسنان">كلية طب الأسنان</option>
+                        <option value="كلية الحاسوب وتكنولوجيا المعلومات">كلية الحاسوب وتكنولوجيا المعلومات</option>
+                        <option value="كلية التربية الرياضية">كلية التربية الرياضية</option>
+                        <option value="كلية الطب البيطري">كلية الطب البيطري</option>
+                        <option value="كلية البترول والموارد الطبيعية">كلية البترول والموارد الطبيعية</option>
+                        <option value="كلية العلوم الطبية التطبيقية">كلية العلوم الطبية التطبيقية</option>
+                        <option value="مركز الحاسب الآلي">مركز الحاسب الآلي</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="level" class="block text-sm font-medium text-gray-700 mb-1">المستوى</label>
+                    <select id="level" class="form-select" required>
+                        <option value="">-- اختر المستوى --</option>
+                        <option value="المستوى الأول">المستوى الأول</option>
+                        <option value="المستوى الثاني">المستوى الثاني</option>
+                        <option value="المستوى الثالث">المستوى الثالث</option>
+                        <option value="المستوى الرابع">المستوى الرابع</option>
+                        <option value="المستوى الخامس">المستوى الخامس</option>
+                        <option value="المستوى السادس">المستوى السادس</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">اسم المادة</label>
+                    <input type="text" id="subject" class="form-input" placeholder="أدخل اسم المادة" required>
+                </div>
+                <div>
+                    <label for="exam-date" class="block text-sm font-medium text-gray-700 mb-1">تاريخ الاختبار</label>
+                    <input type="date" id="exam-date" class="form-input" required>
+                </div>
+            </div>
+
+            <div class="flex justify-center mt-6">
+                <button id="add-students-btn" class="w-full md:w-auto px-6 py-2 btn-primary">إضافة طالب أو أكثر</button>
+            </div>
+        </div>
+
+        <!-- Dynamic student input fields -->
+        <div id="dynamic-fields-container" class="card mt-8 hidden">
+            <h2 class="text-2xl font-bold text-sanaa-blue mb-4">إدخال بيانات الطلاب</h2>
+            <form id="dynamic-form" onsubmit="addStudents(event)">
+                <!-- Fields are injected here by JS -->
+                <div class="md:col-span-2 flex justify-center mt-4">
+                    <button type="submit" class="w-full md:w-auto px-6 py-2 btn-primary">إضافة إلى الكشف</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Data table -->
+        <div id="table-container" class="card mt-8 overflow-x-auto">
+            <h2 class="text-2xl font-bold text-sanaa-blue mb-4">كشف تفصيلي</h2>
+            <table id="data-table" class="min-w-full divide-y divide-gray-200">
+                <thead class="table-header">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider">اسم الطالب</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider">الكلية</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider">المستوى</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider">المادة</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider">تاريخ الاختبار</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider">المبلغ المتبقي</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider action-col">إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="student-table-body" class="bg-white divide-y divide-gray-200">
+                    <!-- Data is loaded here from Firestore -->
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-gray-500">جاري تحميل بيانات الطلاب...</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div id="export-buttons-container" class="flex justify-center mt-6">
+                <div class="dropdown">
+                    <button class="w-full md:w-auto px-6 py-2 btn-primary">حفظ الكشف باسم</button>
+                    <div id="saveDropdown" class="dropdown-content">
+                        <button onclick="saveAs('xlsx')">Excel (.xlsx)</button>
+                        <button onclick="saveAs('pdf')">PDF (.pdf)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for student count input -->
+    <div id="countModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('countModal')">&times;</span>
+            <h3 class="text-xl font-bold mb-4">أدخل عدد الطلاب</h3>
+            <input type="number" id="numStudentsInput" class="form-input mb-4" placeholder="العدد" min="1">
+            <button onclick="createStudentFields()" class="px-6 py-2 btn-primary">تأكيد</button>
+        </div>
+    </div>
+
+    <!-- Modal for student editing -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('editModal')">&times;</span>
+            <h3 class="text-xl font-bold mb-6 text-center">تعديل بيانات الطالب</h3>
+            <form id="editForm" onsubmit="updateStudent(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label for="edit-student-name" class="block text-sm font-medium text-gray-700 mb-1">اسم الطالب</label>
+                        <input type="text" id="edit-student-name" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="edit-college" class="block text-sm font-medium text-gray-700 mb-1">الكلية</label>
+                        <select id="edit-college" class="form-select" required>
+                            <option value="كلية الشريعة والقانون">كلية الشريعة والقانون</option>
+                            <option value="كلية التربية">كلية التربية</option>
+                            <option value="كلية الآداب والعلوم الإنسانية">كلية الآداب والعلوم الإنسانية</option>
+                            <option value="كلية العلوم">كلية العلوم</option>
+                            <option value="كلية التجارة والاقتصاد">كلية التجارة والاقتصاد</option>
+                            <option value="كلية الطب والعلوم الصحية">كلية الطب والعلوم الصحية</option>
+                            <option value="كلية الهندسة">كلية الهندسة</option>
+                            <option value="كلية الزراعة والأغذية والبيئة">كلية الزراعة والأغذية والبيئة</option>
+                            <option value="كلية الصيدلة">كلية الصيدلة</option>
+                            <option value="كلية الإعلام">كلية الإعلام</option>
+                            <option value="كلية اللغات">كلية اللغات</option>
+                            <option value="كلية طب الأسنان">كلية طب الأسنان</option>
+                            <option value="كلية الحاسوب وتكنولوجيا المعلومات">كلية الحاسوب وتكنولوجيا المعلومات</option>
+                            <option value="كلية التربية الرياضية">كلية التربية الرياضية</option>
+                            <option value="كلية الطب البيطري">كلية الطب البيطري</option>
+                            <option value="كلية البترول والموارد الطبيعية">كلية البترول والموارد الطبيعية</option>
+                            <option value="كلية العلوم الطبية التطبيقية">كلية العلوم الطبية التطبيقية</option>
+                            <option value="مركز الحاسب الآلي">مركز الحاسب الآلي</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-level" class="block text-sm font-medium text-gray-700 mb-1">المستوى</label>
+                        <select id="edit-level" class="form-select" required>
+                            <option value="المستوى الأول">المستوى الأول</option>
+                            <option value="المستوى الثاني">المستوى الثاني</option>
+                            <option value="المستوى الثالث">المستوى الثالث</option>
+                            <option value="المستوى الرابع">المستوى الرابع</option>
+                            <option value="المستوى الخامس">المستوى الخامس</option>
+                            <option value="المستوى السادس">المستوى السادس</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-subject" class="block text-sm font-medium text-gray-700 mb-1">اسم المادة</label>
+                        <input type="text" id="edit-subject" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="edit-exam-date" class="block text-sm font-medium text-gray-700 mb-1">تاريخ الاختبار</label>
+                        <input type="date" id="edit-exam-date" class="form-input" required>
+                    </div>
+                    <div>
+                        <!-- REMOVED 'required' attribute - Optional field -->
+                        <label for="edit-amount-due" class="block text-sm font-medium text-gray-700 mb-1">المبلغ المتبقي (اختياري)</label>
+                        <input type="number" id="edit-amount-due" class="form-input" min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-center space-x-4 space-x-reverse">
+                    <button type="submit" class="px-6 py-2 btn-primary">حفظ التعديلات</button>
+                    <button type="button" onclick="closeModal('editModal')" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Message Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content !text-center">
+            <span class="close-button" onclick="closeModal('messageModal')">&times;</span>
+            <h3 id="messageTitle" class="text-xl font-bold mb-4"></h3>
+            <p id="messageBody" class="mb-4"></p>
+            <button onclick="closeModal('messageModal')" class="px-6 py-2 btn-primary">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- Required libraries -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+    
+    <!-- Exporting Libraries (Crucial loading order for PDF) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- ar-Bidi library MUST be loaded AFTER jsPDF and autoTable to patch correctly -->
+    <script src="https://unpkg.com/jspdf-arabic@1.0.0/dist/jspdf-arabic.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, setLogLevel, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        setLogLevel('debug');
+
+        let userId = null;
+        let isAuthReady = false;
+        let currentEditingDocId = null; // Store the ID of the document currently being edited
+        let studentDataCache = []; // Cache to hold current student data for exporting
+
+        // DOM Elements
+        const addStudentsBtn = document.getElementById('add-students-btn');
+        const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+        const dynamicForm = document.getElementById('dynamic-form');
+        const studentTableBody = document.getElementById('student-table-body');
+        const messageModal = document.getElementById('messageModal');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageBody = document.getElementById('messageBody');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const exportButtonsContainer = document.getElementById('export-buttons-container');
+        const actionColumnHeader = document.querySelector('.action-col');
+        
+        // --- Utility Functions ---
+
+        function startLoading() { loadingOverlay.style.display = 'flex'; }
+        function stopLoading() { loadingOverlay.style.display = 'none'; }
+        
+        // Function to show a custom message modal
+        function showMessage(title, body) {
+            messageTitle.textContent = title;
+            messageBody.textContent = body;
+            messageModal.style.display = 'flex';
+        }
+
+        // Function to close any modal
+        window.closeModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.style.display = 'none';
+        }
+
+        // --- Firebase Setup ---
+
+        // Firestore collection reference (using userId)
+        const studentsCollection = () => {
+             if (!userId) {
+                console.error("Firestore Error: userId is not defined.");
+                throw new Error("User not authenticated or ID not ready.");
+            }
+            // Private collection path
+            return collection(db, `artifacts/${appId}/users/${userId}/students`);
+        };
+
+        // Attempt sign-in first with custom token, then anonymously
+        async function authenticate() {
+            try {
+                await setPersistence(auth, browserSessionPersistence);
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication failed:", error);
+                showMessage("فشل المصادقة", `حدث خطأ أثناء تسجيل الدخول: ${error.message}`);
+            }
+        }
+        
+        // Listen for authentication state changes
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('userIdDisplay').textContent = userId;
+                isAuthReady = true;
+                // Start listening to data once authenticated
+                listenForStudents();
+            } else {
+                // If no user is logged in, attempt to authenticate
+                authenticate();
+            }
+        });
+
+        // --- UI & Logic Functions for Adding/Editing/Deleting ---
+
+        // Creates dynamic input fields for students
+        window.createStudentFields = function() {
+            const numStudents = document.getElementById('numStudentsInput').value;
+            if (!numStudents || isNaN(numStudents) || numStudents <= 0) {
+                showMessage('خطأ في الإدخال', 'الرجاء إدخال عدد صحيح موجب.');
+                return;
+            }
+
+            // Remove existing fields but keep the submit button container
+            dynamicForm.querySelectorAll('.student-fields-group').forEach(el => el.remove());
+
+            for (let i = 0; i < numStudents; i++) {
+                const studentFields = document.createElement('div');
+                studentFields.classList.add('grid', 'grid-cols-1', 'md:grid-cols-2', 'gap-4', 'mb-4', 'md:col-span-2', 'p-4', 'bg-gray-50', 'rounded-lg', 'student-fields-group');
+                studentFields.innerHTML = `
+                    <div>
+                        <label for="student-name-${i}" class="block text-sm font-medium text-gray-700 mb-1">اسم الطالب ${i + 1}</label>
+                        <input type="text" id="student-name-${i}" class="form-input" placeholder="أدخل اسم الطالب" required>
+                    </div>
+                    <div>
+                        <!-- REMOVED 'required' attribute - Optional field -->
+                        <label for="amount-due-${i}" class="block text-sm font-medium text-gray-700 mb-1">المبلغ المتبقي (اختياري)</label>
+                        <input type="number" id="amount-due-${i}" class="form-input" placeholder="أدخل المبلغ المتبقي (افتراضي 0)" min="0" step="0.01">
+                    </div>
+                `;
+                // Insert new fields before the submit button container (last child)
+                dynamicForm.insertBefore(studentFields, dynamicForm.lastElementChild);
+            }
+            dynamicFieldsContainer.classList.remove('hidden');
+            closeModal('countModal');
+        }
+
+        // Adds students to Firestore (Batch Add)
+        window.addStudents = async function(e) {
+            e.preventDefault();
+            
+            if (!isAuthReady) {
+                showMessage('جاري التحميل', 'الرجاء الانتظار حتى يتم تحميل ملفات المستخدم.');
+                return;
+            }
+
+            const college = document.getElementById('college').value;
+            const level = document.getElementById('level').value;
+            const subject = document.getElementById('subject').value;
+            const examDate = document.getElementById('exam-date').value;
+
+            if (!college || !level || !subject || !examDate) {
+                showMessage('بيانات ثابتة مفقودة', 'الرجاء ملء جميع الحقول الثابتة أولاً.');
+                return;
+            }
+
+            const studentInputs = dynamicForm.querySelectorAll('input[id^="student-name"]');
+            if (studentInputs.length === 0) {
+                 showMessage('بيانات الطالب مفقودة', 'الرجاء تحديد عدد الطلاب وإدخال بياناتهم.');
+                return;
+            }
+
+            startLoading();
+            let successCount = 0;
+            try {
+                for (let i = 0; i < studentInputs.length; i++) {
+                    const studentName = document.getElementById(`student-name-${i}`).value.trim();
+                    const amountDueInput = document.getElementById(`amount-due-${i}`).value;
+
+                    if (studentName) { // Only require the student name
+                        
+                        // Handle optional amount due, defaulting to 0 if empty or invalid
+                        const amountDue = amountDueInput ? parseFloat(amountDueInput) : 0;
+                        
+                        await addDoc(studentsCollection(), {
+                            studentName,
+                            college,
+                            level,
+                            subject,
+                            examDate,
+                            amountDue: amountDue // Save as number (0 if empty)
+                        });
+                        successCount++;
+                    }
+                }
+                stopLoading();
+                showMessage('تمت الإضافة بنجاح', `تم إضافة ${successCount} طالب/طلاب إلى الكشف.`);
+                dynamicForm.reset();
+                // Clear dynamic fields after successful submission
+                dynamicForm.querySelectorAll('.student-fields-group').forEach(el => el.remove());
+                dynamicFieldsContainer.classList.add('hidden');
+
+            } catch (e) {
+                stopLoading();
+                showMessage('خطأ في الحفظ', `حدث خطأ أثناء إضافة البيانات: ${e.message}`);
+            }
+        }
+
+        // Opens the modal for editing a specific row
+        window.editRow = async function(docId) {
+            if (!isAuthReady) {
+                showMessage('جاري التحميل', 'الرجاء الانتظار.');
+                return;
+            }
+            startLoading();
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/students`, docId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    currentEditingDocId = docId;
+
+                    // Populate the modal fields
+                    document.getElementById('edit-student-name').value = data.studentName;
+                    document.getElementById('edit-college').value = data.college;
+                    document.getElementById('edit-level').value = data.level;
+                    document.getElementById('edit-subject').value = data.subject;
+                    document.getElementById('edit-exam-date').value = data.examDate;
+                    
+                    // Set value for optional field. Use empty string if 0, or value.
+                    const amountDueValue = data.amountDue === 0 ? '' : data.amountDue;
+                    document.getElementById('edit-amount-due').value = amountDueValue;
+
+
+                    stopLoading();
+                    document.getElementById('editModal').style.display = 'flex';
+                } else {
+                    stopLoading();
+                    showMessage('خطأ', 'لم يتم العثور على بيانات الطالب.');
+                }
+            } catch (e) {
+                stopLoading();
+                showMessage('خطأ في جلب البيانات', `حدث خطأ: ${e.message}`);
+            }
+        }
+
+        // Updates the student data in Firestore
+        window.updateStudent = async function(e) {
+            e.preventDefault();
+            if (!currentEditingDocId || !isAuthReady) return;
+
+            startLoading();
+            try {
+                const amountDueInput = document.getElementById('edit-amount-due').value;
+                
+                // Handle optional amount due here too
+                const finalAmountDue = amountDueInput ? parseFloat(amountDueInput) : 0;
+                
+                const updatedData = {
+                    studentName: document.getElementById('edit-student-name').value.trim(),
+                    college: document.getElementById('edit-college').value,
+                    level: document.getElementById('edit-level').value,
+                    subject: document.getElementById('edit-subject').value.trim(),
+                    examDate: document.getElementById('edit-exam-date').value,
+                    amountDue: finalAmountDue,
+                };
+
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/students`, currentEditingDocId);
+                await setDoc(docRef, updatedData);
+
+                stopLoading();
+                closeModal('editModal');
+                showMessage('تم التعديل', 'تم تحديث بيانات الطالب بنجاح.');
+                currentEditingDocId = null; // Clear editing ID
+            } catch (e) {
+                stopLoading();
+                showMessage('خطأ في التعديل', `حدث خطأ أثناء تحديث البيانات: ${e.message}`);
+            }
+        }
+
+
+        // Deletes a document from Firestore
+        window.deleteRow = async function(docId) {
+            if (!isAuthReady) {
+                showMessage('جاري التحميل', 'الرجاء الانتظار حتى يتم تحميل ملفات المستخدم.');
+                return;
+            }
+
+            startLoading();
+            try {
+                await deleteDoc(doc(studentsCollection(), docId));
+                stopLoading();
+                showMessage('تم الحذف', 'تم حذف الطالب بنجاح.');
+            } catch (e) {
+                stopLoading();
+                showMessage('خطأ في الحذف', `حدث خطأ أثناء حذف الطالب: ${e.message}`);
+            }
+        }
+        
+        // Listens to Firestore changes and updates the table
+        function listenForStudents() {
+            if (!isAuthReady) return;
+
+            onSnapshot(studentsCollection(), (querySnapshot) => {
+                studentTableBody.innerHTML = ''; // Clear table
+                studentDataCache = []; // Reset cache
+
+                if (querySnapshot.empty) {
+                     studentTableBody.innerHTML = `
+                         <tr><td colspan="7" class="text-center py-4 text-gray-500">لا توجد بيانات طلاب حالياً.</td></tr>
+                     `;
+                     return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const student = doc.data();
+                    const docId = doc.id;
+                    
+                    // Add to cache
+                    studentDataCache.push(student);
+
+                    const newRow = document.createElement('tr');
+                    newRow.classList.add('table-row');
+                    newRow.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.studentName}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.college}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.level}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.subject}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.examDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.amountDue.toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium action-col-data space-x-2 space-x-reverse">
+                            <!-- Action buttons with Sana'a Blue accent -->
+                            <button onclick="editRow('${docId}')" class="text-sanaa-blue hover:text-sanaa-gold action-button border border-sanaa-blue hover:border-sanaa-gold hover:bg-sanaa-blue/10">تحرير</button>
+                            <button onclick="deleteRow('${docId}')" class="text-red-600 hover:text-red-900 action-button border border-red-600">حذف</button>
+                        </td>
+                    `;
+                    studentTableBody.appendChild(newRow);
+                });
+            }, (error) => {
+                console.error("Error listening to Firestore:", error);
+                studentTableBody.innerHTML = `
+                    <tr><td colspan="7" class="text-center py-4 text-red-500">حدث خطأ في جلب البيانات: ${error.message}</td></tr>
+                `;
+            });
+        }
+
+        // Event listener for opening the modal
+        addStudentsBtn.addEventListener('click', function() {
+            document.getElementById('countModal').style.display = 'flex';
+        });
+
+        // --- Export Functions ---
+
+        // Main save function
+        window.saveAs = async function(format) {
+            if (studentDataCache.length === 0) {
+                showMessage("لا توجد بيانات", "لا توجد بيانات في الكشف للتصدير.");
+                return;
+            }
+
+            startLoading();
+            
+            try {
+                if (format === 'xlsx') {
+                    if (typeof XLSX === 'undefined') throw new Error("مكتبة XLSX غير محملة.");
+                    
+                    const dataToExport = studentDataCache.map((student, index) => ({
+                        'ت': index + 1,
+                        'اسم الطالب': student.studentName,
+                        'الكلية': student.college,
+                        'المستوى': student.level,
+                        'المادة': student.subject,
+                        'تاريخ الاختبار': student.examDate,
+                        'المبلغ المتبقي': student.amountDue.toFixed(2)
+                    }));
+
+                    const ws = XLSX.utils.json_to_sheet(dataToExport);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "كشف الطلاب");
+                    XLSX.writeFile(wb, "كشف_بيانات_الطلاب.xlsx");
+
+                } else if (format === 'pdf') {
+                    // Check if required libraries are loaded
+                    if (typeof window.jspdf === 'undefined' || typeof jsPDF.autoTable === 'undefined' || typeof jsPDF.prototype.applyArabic === 'undefined') {
+                         throw new Error("مكتبات PDF غير محملة بشكل كامل أو صحيح. قد تحتاج إلى تحديث المتصفح.");
+                    }
+                    
+                    const { jsPDF } = window.jspdf;
+                    
+                    // LTR orientation (landscape)
+                    const doc = new jsPDF({
+                        orientation: 'l',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+
+                    // Set font to a PDF standard font (like Helvetica) which is then used by applyArabic
+                    doc.setFont('helvetica', 'normal');
+                    
+                    const headers = [
+                        'المبلغ المتبقي', 
+                        'تاريخ الاختبار', 
+                        'المادة', 
+                        'المستوى', 
+                        'الكلية', 
+                        'اسم الطالب', 
+                        'ت'
+                    ];
+
+                    const body = studentDataCache.map((student, index) => {
+                        // Apply Arabic transformation to all string values before placing in the PDF body
+                        return [
+                            doc.applyArabic(student.amountDue.toFixed(2)), 
+                            doc.applyArabic(student.examDate), 
+                            doc.applyArabic(student.subject), 
+                            doc.applyArabic(student.level), 
+                            doc.applyArabic(student.college), 
+                            doc.applyArabic(student.studentName), 
+                            doc.applyArabic((index + 1).toString())
+                        ];
+                    });
+                    
+                    // Title and Metadata
+                    doc.setFontSize(14);
+                    doc.text(doc.applyArabic("كشف بيانات الطلاب"), 200, 15, { align: 'right' });
+                    doc.setFontSize(10);
+                    doc.text(doc.applyArabic(`تاريخ الإنشاء: ${new Date().toLocaleDateString('ar-SA')}`), 200, 22, { align: 'right' });
+
+
+                    doc.autoTable({
+                        head: [headers.map(h => doc.applyArabic(h))], // Apply Arabic to headers too
+                        body: body,
+                        startY: 30,
+                        theme: 'grid',
+                        styles: {
+                            halign: 'right', // Align content to the right
+                            cellPadding: 3,
+                            fontSize: 10,
+                            font: 'helvetica' // Must match the font set above
+                        },
+                        headStyles: {
+                            fillColor: [0, 51, 102], // Sana'a Blue RGB
+                            textColor: [255, 255, 255],
+                            fontStyle: 'bold'
+                        },
+                        columnStyles: {
+                            6: { halign: 'center', cellWidth: 10 }, // 'ت' column
+                            0: { halign: 'center', cellWidth: 20 }, // 'المبلغ المتبقي' column
+                        },
+                        didDrawPage: function(data) {
+                            // Page numbering
+                            doc.text(
+                                doc.applyArabic(`صفحة ${data.pageNumber}`), 
+                                data.settings.margin.right, 
+                                doc.internal.pageSize.height - 10, 
+                                { align: 'right' }
+                            );
+                        }
+                    });
+
+                    doc.save("كشف_بيانات_الطلاب.pdf");
+                }
+                showMessage('تم التصدير', `تم تصدير الكشف بصيغة ${format.toUpperCase()} بنجاح. ملاحظة: ملف PDF نصي وقابل للطباعة.`);
+
+            } catch (e) {
+                console.error("Export Error:", e);
+                showMessage('خطأ في التصدير', `حدث خطأ أثناء التصدير: ${e.message}. إذا تكرر الخطأ، **الرجاء الضغط على زر "Preview" مرة أخرى** لإعادة تحميل المكتبات بشكل كامل.`);
+            } finally {
+                stopLoading();
+            }
+        }
+    </script>
+</body>
+</html>
+
